@@ -1,31 +1,38 @@
 class Processor
-  def initialize(file)
+  attr_reader :finished
+  def initialize(chunky_image, start_time = Time.now, target_color = ChunkyPNG::Color.rgba(248, 218, 69, 255))
     @blobs = []
-    @image = ChunkyPNG::Image.from_file(file)
+    @finished = false
+    @start_time = start_time
+    @target_color = target_color
+
+    @color_red  = ChunkyPNG::Color.r(@target_color)
+    @color_green= ChunkyPNG::Color.g(@target_color)
+    @color_blue = ChunkyPNG::Color.b(@target_color)
+
+    Thread.new do
+      $window.status = "B"
+      load_image(chunky_image)
+      $window.status = "D"
+      process
+    end
+  end
+
+  def load_image(chunky_image)
+    @image = chunky_image
 
     twidth = 640.0
     theight= 360.0
-    puts "Scaling image to #{twidth}:#{theight}..."
+    $window.status = "Scaling image to #{twidth}:#{theight}..."
     scale = [twidth/@image.width, theight/@image.height].min
-    puts "scale: #{scale}"
+    # puts "scale: #{scale}"
     width = @image.width * scale
     height= @image.height * scale
 
     @image.resample_bilinear!(width.to_i.clamp(1, twidth), height.to_i.clamp(1, theight))
 
-
-    @target_color = ChunkyPNG::Color.rgba(248, 218, 69, 255) # Yellow
-    # @target_color = ChunkyPNG::Color.rgba(231, 57, 73, 255) # Red
-    # @target_color = ChunkyPNG::Color.rgba(255,255,255, 255)# White
-    # @target_color = ChunkyPNG::Color.rgba(0,0,0, 255)# Black
-    @color_red  = ChunkyPNG::Color.r(@target_color)
-    @color_green= ChunkyPNG::Color.g(@target_color)
-    @color_blue = ChunkyPNG::Color.b(@target_color)
-
     @out_image = @image.grayscale
     @old_out_image = @out_image.dup
-
-    process
   end
 
   def color_in_range(pixel, drift)
@@ -43,9 +50,12 @@ class Processor
     distance_threshold = 3
     color_distance = 80
 
+    _progress_size = @image.width-2+@image.height-2
     for x in 1..@image.width-2
       for y in 1..@image.height-2
-        # puts "X: #{x}:#{y}"
+        $window.progressbar.progress=(((x+y).to_f / _progress_size) * 100)
+
+        $window.status =  "#{x}:#{y}"
         pixel = @image.get_pixel(x, y)
         if color_in_range(pixel, color_distance)
           @old_out_image[x,y] = @target_color
@@ -76,7 +86,15 @@ class Processor
 
     clear_enclosed_blobs
 
-    completed
+    if @blobs.size > 0
+      mask_color = ChunkyPNG::Color.rgba(@color_red, @color_green, @color_blue, 150)
+      @blobs.each do |blob|
+        @out_image.rect(blob.min_x, blob.min_y, blob.max_x, blob.max_y, ChunkyPNG::Color::WHITE, mask_color)
+      end
+    end
+
+    $window.status = "Completed. Took #{(Time.now-@start_time).round(2)} seconds. Found #{@blobs.size} blobs."
+    @finished = true
   end
 
   def clear_enclosed_blobs(list = @blobs)
@@ -96,7 +114,7 @@ class Processor
     end
 
     if list.size != @blobs.size
-      puts "Fixing #{errors.size} errors..."
+      $window.status = "Fixing #{errors.size} errors..."
       list.each do |blob|
         list.each do |can|
           if (can.max_x - can.min_x) + (can.max_y - can.min_y) >= (blob.max_x - blob.min_x) + (blob.max_y - blob.min_y)
@@ -110,25 +128,18 @@ class Processor
       list.each {|b| @blobs.delete(b)}
 
       if errors.size > 0
-        puts "found #{errors.size} errors, fixing,,,"
+        $window.status = "found #{errors.size} errors, fixing,,,"
         clear_enclosed_blobs(errors)
       end
     else
       if errors.size > 0
-        puts "found #{errors.size} errors, fixing..."
+        $window.status = "found #{errors.size} errors, fixing..."
         clear_enclosed_blobs(errors)
       end
     end
   end
 
   def completed
-    if @blobs.size > 0
-      mask_color = ChunkyPNG::Color.rgba(@color_red, @color_green, @color_blue, 150)
-      @blobs.each do |blob|
-        @out_image.rect(blob.min_x, blob.min_y, blob.max_x, blob.max_y, ChunkyPNG::Color::WHITE, mask_color)
-      end
-    end
-
     $window.main_image = Gosu::Image.new(Magick::Image.new(@image))
     $window.out_image = Gosu::Image.new(Magick::Image.new(@out_image))
     $window.old_out_image = Gosu::Image.new(Magick::Image.new(@old_out_image))

@@ -4,7 +4,7 @@ class ProgressBar
     @x,@y,@width,@height = x,y,width,height
     @progress = 0.0
 
-    @font = Gosu::Font.new(28, name: "Arial", bold: true)
+    @font = Gosu::Font.new(28, name: "Consolas", bold: true)
   end
 
   def draw

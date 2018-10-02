@@ -1,8 +1,9 @@
-begin
+# begin
   require "oily_png"
-rescue LoadError
-  require "chunky_png"
-end
+# rescue LoadError
+#   puts "Failing back to chunkyPNG..."
+#   require "chunky_png"
+# end
 
 require "gosu"
 
