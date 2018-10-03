@@ -55,6 +55,8 @@ class Window < Gosu::Window
 
   def button_up(id)
     close if id == Gosu::KbEscape
+
+    save_images if id == Gosu::KbS && (button_down?(Gosu::KbLeftControl) || button_down?(Gosu::KbRightControl))
   end
 
   def drop(file)
@@ -64,6 +66,15 @@ class Window < Gosu::Window
       handle_image(file)
     else
       @status = "Processor is busy..."
+    end
+  end
+
+  def save_images
+    puts __FILE__.sub(File.basename(__FILE__), '').sub('lib/', '')
+
+    if @out_image
+      @out_image.save("data/out.png")
+      @old_out_image.save("data/old_out.png")
     end
   end
 
