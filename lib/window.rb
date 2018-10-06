@@ -17,7 +17,9 @@ class Window < Gosu::Window
 
     @font = Gosu::Font.new(28, name: "Consolas")
     @status = "Waiting..."
-    @target_color = ChunkyPNG::Color.rgba(248, 218, 69, 255)
+    @target_color = ChunkyPNG::Color.rgba(248, 218, 69, 255) # YELLOW
+    # @target_color = ChunkyPNG::Color.rgba(127, 170, 72, 255)  # GREEN
+    # @target_color = ChunkyPNG::Color.rgba(0, 0, 0, 255)    # BLACK
     @gosu_target_color = Gosu::Color.rgba(
       ChunkyPNG::Color.r(@target_color), # red
       ChunkyPNG::Color.g(@target_color), # green
@@ -28,21 +30,22 @@ class Window < Gosu::Window
 
   def draw
     # main frame
-    Gosu.draw_rect(1, 1, self.width-2, 500, Gosu::Color::WHITE)
+    Gosu.draw_rect(1, 1, self.width-2, 500, Gosu::Color.rgb(200, 200, 200))
     scale = [self.width/@main_image.width, 500/@main_image.height].min.ceil if @main_image
 
     @main_image.draw(1,1,4, scale+@scale, scale+@scale) if @main_image
 
     # Split frame
-    Gosu.draw_rect(1, 500+2, 640, 360, Gosu::Color::GREEN)
+    Gosu.draw_rect(1, 500+2, 640, 360, Gosu::Color.rgb(25, 127, 30))
     @out_image.draw(1, 500+2, 4) if @out_image
 
     # Split frame
-    Gosu.draw_rect(self.width/2+2, 500+2, 640-2, 360, Gosu::Color::RED)
+    Gosu.draw_rect(self.width/2+2, 500+2, 640-2, 360, Gosu::Color.rgb(127, 25, 40))
     @old_out_image.draw(self.width/2+1, 500+2, 4) if @old_out_image
 
+    Gosu.draw_rect(0, 260+638, 28, 28, Gosu::Color::WHITE)
     Gosu.draw_rect(2, 260+640, 24, 24, @gosu_target_color)
-    @font.draw(@status, self.width/2-@font.text_width(@status)/2, 260+640, 1)
+    @font.draw_text(@status, self.width/2-@font.text_width(@status)/2, 260+640, 1)
     @progressbar.draw
   end
 
@@ -89,6 +92,10 @@ class Window < Gosu::Window
       @status = "File is not an image or it is not supported."
       return
     end
+    @main_image = nil
+    @out_image = nil
+    @old_out_image = nil
+
     _rgba_stream = ChunkyPNG::Image.from_rgba_stream(_image.width, _image.height, _image.to_blob)
 
     @current_processor = Processor.new(_rgba_stream, start_time, @target_color)

@@ -13,7 +13,9 @@ class Processor
     Thread.new do
       $window.status = "B"
       load_image(chunky_image)
+      @image_load_time = Time.now-start_time
       $window.status = "D"
+      @processor_time = Time.now
       process
     end
   end
@@ -48,12 +50,13 @@ class Processor
   def process
     last_point = nil
     distance_threshold = 3
-    color_distance = 80
+    color_distance = 50
+    $window.status = "Processing..."
 
-    _progress_size = @image.width-2+@image.height-2
-    for x in 1..@image.width-2
-      for y in 1..@image.height-2
-        $window.progressbar.progress=(((x+y).to_f / _progress_size) * 100)
+    _progress_size = @image.height-2
+    for y in 1..@image.height-2
+      $window.progressbar.progress=((y.to_f / _progress_size) * 100)
+      for x in 1..@image.width-2
 
         $window.status =  "#{x}:#{y}"
         pixel = @image.get_pixel(x, y)
@@ -73,7 +76,7 @@ class Processor
 
             unless found_blob
               @blobs << Blob.new(x,y, x,y)
-              # puts "Blobs #{@blobs.size}"
+              # $window.status = "Blobs #{@blobs.size}"
             end
           else
             @blobs << Blob.new(x,y, x,y)
@@ -84,7 +87,10 @@ class Processor
       end
     end
 
+    search_time = Time.now-@processor_time
+    clean_time_start = Time.now
     clear_enclosed_blobs
+    clean_time = Time.now - clean_time_start
 
     if @blobs.size > 0
       mask_color = ChunkyPNG::Color.rgba(@color_red, @color_green, @color_blue, 150)
@@ -93,7 +99,13 @@ class Processor
       end
     end
 
-    $window.status = "Completed. Took #{(Time.now-@start_time).round(2)} seconds. Found #{@blobs.size} blobs."
+    $window.status = "
+     Load: #{@image_load_time.round(2)}s
+     Search: #{(search_time).round(2)}s
+     Repair: #{(clean_time).round(2)}s
+     Total: #{(Time.now-@start_time).round(2)}s
+     Found #{@blobs.size} blobs
+     ".gsub("\n", '')
     @finished = true
   end
 
